@@ -29,6 +29,7 @@ use App\Services\Import\ImportJobStatus\ImportJobStatusManager;
 use App\Services\Import\Routine\APISubmitter;
 use App\Services\Import\Routine\ColumnValueConverter;
 use App\Services\Import\Routine\CSVFileProcessor;
+use App\Services\Import\Routine\DuplicationRemover;
 use App\Services\Import\Routine\LineProcessor;
 use App\Services\Import\Routine\PseudoTransactionProcessor;
 use JsonException;
@@ -48,6 +49,8 @@ class ImportRoutineManager
     private $lineProcessor;
     /** @var ColumnValueConverter */
     private $columnValueConverter;
+    /** @var DuplicationRemover */
+    private $duplicationRemover;
     /** @var PseudoTransactionProcessor */
     private $pseudoTransactionProcessor;
     /** @var APISubmitter */
@@ -99,6 +102,7 @@ class ImportRoutineManager
         $this->configuration              = $configuration;
         $this->apiSubmitter               = new APISubmitter;
         $this->lineProcessor              = new LineProcessor($this->configuration);
+        $this->duplicationRemover         = new DuplicationRemover($this->configuration);
         $this->pseudoTransactionProcessor = new PseudoTransactionProcessor($this->configuration->getDefaultAccount());
         $this->columnValueConverter       = new ColumnValueConverter($this->configuration);
         $this->csvFileProcessor           = new CSVFileProcessor($this->configuration);
@@ -106,6 +110,7 @@ class ImportRoutineManager
         // set the identifier:
         $this->apiSubmitter->setIdentifier($this->identifier);
         $this->lineProcessor->setIdentifier($this->identifier);
+        $this->duplicationRemover->setIdentifier($this->identifier);
         $this->pseudoTransactionProcessor->setIdentifier($this->identifier);
         $this->columnValueConverter->setIdentifier($this->identifier);
         $this->csvFileProcessor->setIdentifier($this->identifier);
@@ -166,8 +171,11 @@ class ImportRoutineManager
         // convert value arrays into (pseudo) transactions.
         $pseudo = $this->columnValueConverter->processValueArrays($valueArrays);
 
+        // remove duplicates.
+        $pseudo_deduplicated = $this->duplicationRemover->processPseudo($pseudo);
+
         // convert pseudo transactions into actual transactions.
-        $transactions = $this->pseudoTransactionProcessor->processPseudo($pseudo);
+        $transactions = $this->pseudoTransactionProcessor->processPseudo($pseudo_deduplicated);
 
         // submit transactions to API:
         $this->apiSubmitter->processTransactions($transactions);

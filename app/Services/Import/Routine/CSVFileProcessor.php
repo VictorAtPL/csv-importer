@@ -27,7 +27,6 @@ use App\Exceptions\ImportException;
 use App\Services\CSV\Configuration\Configuration;
 use App\Services\CSV\Specifics\SpecificService;
 use App\Services\Import\Support\ProgressInformation;
-use InvalidArgumentException;
 use JsonException;
 use League\Csv\Exception;
 use League\Csv\Reader;
